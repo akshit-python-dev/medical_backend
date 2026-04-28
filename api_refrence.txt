@@ -1,0 +1,372 @@
+"""
+API endpoints reference for quick copy-paste
+"""
+
+# ============================================================================
+# AUTHENTICATION ENDPOINTS
+# ============================================================================
+
+# Get JWT Token
+# POST /api/token/
+# Body: {"username": "admin", "password": "admin123"}
+# Returns: {"access": "token_here", "refresh": "token_here"}
+
+# Refresh Token
+# POST /api/token/refresh/
+# Body: {"refresh": "token_here"}
+# Returns: {"access": "new_token_here"}
+
+
+# ============================================================================
+# PATIENT ENDPOINTS
+# ============================================================================
+
+# List All Patients
+# GET /api/patients/
+# Query params: ?search=john&ordering=-created_at&page=1
+
+# Create Patient
+# POST /api/patients/
+# Body: {
+#   "first_name": "John",
+#   "last_name": "Doe",
+#   "email": "john@example.com",
+#   "phone": "555-1234",
+#   "date_of_birth": "1990-01-01",
+#   "gender": "M",
+#   "address": "123 Main St",
+#   "medical_history": "Asthma"
+# }
+
+# Get Patient Details
+# GET /api/patients/1/
+
+# Update Patient
+# PATCH /api/patients/1/
+# Body: {"first_name": "Jane"}
+
+# Delete Patient
+# DELETE /api/patients/1/
+
+# Get Patient Medical History
+# GET /api/patients/1/medical_history/
+
+# Get Patient Upcoming Appointments
+# GET /api/patients/1/upcoming_appointments/
+
+# Get Patient Billing Summary
+# GET /api/patients/1/billing_summary/
+
+
+# ============================================================================
+# APPOINTMENT ENDPOINTS
+# ============================================================================
+
+# List All Appointments
+# GET /api/appointments/
+
+# Create Appointment
+# POST /api/appointments/
+# Body: {
+#   "patient": 1,
+#   "doctor_name": "Dr. Smith",
+#   "appointment_date": "2024-01-15T10:30:00Z",
+#   "reason": "Checkup",
+#   "status": "scheduled",
+#   "notes": "Patient has been fasting"
+# }
+
+# Get Appointment Details
+# GET /api/appointments/1/
+
+# Update Appointment
+# PATCH /api/appointments/1/
+# Body: {"status": "scheduled"}
+
+# Delete Appointment
+# DELETE /api/appointments/1/
+
+# Get Today's Appointments
+# GET /api/appointments/today/
+
+# Get Upcoming Appointments (7 days)
+# GET /api/appointments/upcoming/
+
+# Mark Appointment as Completed
+# POST /api/appointments/1/mark_completed/
+
+# Cancel Appointment
+# POST /api/appointments/1/cancel/
+
+
+# ============================================================================
+# MEDICAL RECORD ENDPOINTS
+# ============================================================================
+
+# List All Medical Records
+# GET /api/medical-records/
+
+# Create Medical Record
+# POST /api/medical-records/
+# Body: {
+#   "patient": 1,
+#   "appointment": 1,
+#   "diagnosis": "Hypertension",
+#   "treatment": "Medication and lifestyle changes",
+#   "medications": "Lisinopril 10mg daily",
+#   "doctor_name": "Dr. Smith",
+#   "follow_up_date": "2024-02-15",
+#   "vital_signs": {
+#     "bp": "130/80",
+#     "temp": "98.6F",
+#     "pulse": "72"
+#   }
+# }
+
+# Get Medical Record Details
+# GET /api/medical-records/1/
+
+# Update Medical Record
+# PATCH /api/medical-records/1/
+# Body: {"treatment": "Updated treatment plan"}
+
+
+# ============================================================================
+# MEDICAL REPORT ENDPOINTS (FILE UPLOADS)
+# ============================================================================
+
+# List All Medical Reports
+# GET /api/medical-reports/
+
+# Upload Medical Report
+# POST /api/medical-reports/
+# Form-Data:
+#   patient: 1
+#   report_type: lab_test  # Options: lab_test, xray, ultrasound, ct_scan, prescription, other
+#   title: Blood Test Results
+#   file: <binary file>
+#   description: Annual blood test
+
+# Get Medical Report Details
+# GET /api/medical-reports/1/
+
+# Delete Medical Report
+# DELETE /api/medical-reports/1/
+
+# Get Reports by Type
+# GET /api/medical-reports/by_type/?type=lab_test
+
+
+# ============================================================================
+# PRESCRIPTION ENDPOINTS
+# ============================================================================
+
+# List All Prescriptions
+# GET /api/prescriptions/
+
+# Create Prescription
+# POST /api/prescriptions/
+# Body: {
+#   "medical_record": 1,
+#   "medication_name": "Aspirin",
+#   "dosage": "500mg",
+#   "frequency": "Twice daily",
+#   "duration": "7 days",
+#   "instructions": "Take with water after meals"
+# }
+
+# Get Prescription Details
+# GET /api/prescriptions/1/
+
+# Update Prescription
+# PATCH /api/prescriptions/1/
+# Body: {"frequency": "Three times daily"}
+
+
+# ============================================================================
+# BILLING ENDPOINTS
+# ============================================================================
+
+# List All Billing Records
+# GET /api/billing/
+
+# Create Billing Record
+# POST /api/billing/
+# Body: {
+#   "patient": 1,
+#   "appointment": 1,
+#   "amount": "250.00",
+#   "status": "pending",
+#   "description": "Consultation Fee",
+#   "due_date": "2024-02-15"
+# }
+
+# Get Billing Details
+# GET /api/billing/1/
+
+# Update Billing
+# PATCH /api/billing/1/
+# Body: {"status": "pending"}
+
+# Get Billing Summary
+# GET /api/billing/summary/
+# Returns: {
+#   "total_pending": 500.00,
+#   "total_overdue": 200.00,
+#   "total_paid": 1500.00,
+#   "pending_count": 2
+# }
+
+# Mark Billing as Paid
+# POST /api/billing/1/mark_paid/
+
+
+# ============================================================================
+# STATISTICS ENDPOINTS
+# ============================================================================
+
+# List All Statistics Records
+# GET /api/stats/
+
+# Get Today's Statistics
+# GET /api/stats/today/
+
+# Get Comprehensive Summary
+# GET /api/stats/summary/
+# Returns: {
+#   "total_patients": 25,
+#   "total_appointments": 150,
+#   "today_appointments": 8,
+#   "completed_appointments": 140,
+#   "pending_appointments": 10,
+#   "total_revenue": 5000.00,
+#   "pending_bills": 500.00,
+#   "overdue_bills": 200.00
+# }
+
+
+# ============================================================================
+# FILTERING & SEARCH EXAMPLES
+# ============================================================================
+
+# Search by name
+# GET /api/patients/?search=john
+
+# Search and filter by status
+# GET /api/appointments/?search=john&status=completed
+
+# Sort by date (newest first)
+# GET /api/patients/?ordering=-created_at
+
+# Sort by date (oldest first)
+# GET /api/patients/?ordering=created_at
+
+# Pagination (page 2, 20 items per page)
+# GET /api/patients/?page=2
+
+# Combine filters and search
+# GET /api/appointments/?search=john&status=scheduled&ordering=-appointment_date&page=1
+
+
+# ============================================================================
+# HEADERS FOR ALL REQUESTS
+# ============================================================================
+
+# Required Headers:
+# Authorization: Bearer YOUR_ACCESS_TOKEN
+# Content-Type: application/json
+#
+# Example:
+# curl -X GET http://localhost:8000/api/patients/ \
+#   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+#   -H "Content-Type: application/json"
+
+
+# ============================================================================
+# RESPONSE STATUS CODES
+# ============================================================================
+
+# 200 OK               - Request successful, data returned
+# 201 Created          - Resource created successfully
+# 204 No Content       - Resource deleted successfully
+# 400 Bad Request      - Invalid input data
+# 401 Unauthorized     - Missing or invalid token
+# 403 Forbidden        - Permission denied
+# 404 Not Found        - Resource doesn't exist
+# 409 Conflict         - Duplicate resource (e.g., duplicate email)
+# 500 Server Error     - Server problem
+
+
+# ============================================================================
+# COMMON RESPONSE FORMATS
+# ============================================================================
+
+# Success Response (Single Object):
+# {
+#   "id": 1,
+#   "first_name": "John",
+#   "last_name": "Doe",
+#   "email": "john@example.com",
+#   ...
+# }
+
+# Success Response (List):
+# {
+#   "count": 100,
+#   "next": "http://localhost:8000/api/patients/?page=2",
+#   "previous": null,
+#   "results": [
+#     {
+#       "id": 1,
+#       "first_name": "John",
+#       ...
+#     }
+#   ]
+# }
+
+# Error Response:
+# {
+#   "field_name": ["Error message"],
+#   "another_field": ["Another error message"]
+# }
+
+# Auth Error Response:
+# {
+#   "detail": "Authentication credentials were not provided."
+# }
+
+
+# ============================================================================
+# CURL EXAMPLES FOR TESTING
+# ============================================================================
+
+# Get token
+# curl -X POST http://localhost:8000/api/token/ \
+#   -H "Content-Type: application/json" \
+#   -d '{"username":"admin","password":"admin123"}'
+
+# List patients
+# curl -X GET http://localhost:8000/api/patients/ \
+#   -H "Authorization: Bearer YOUR_TOKEN"
+
+# Create patient
+# curl -X POST http://localhost:8000/api/patients/ \
+#   -H "Authorization: Bearer YOUR_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "first_name":"John",
+#     "last_name":"Doe",
+#     "email":"john@example.com",
+#     "phone":"555-1234",
+#     "date_of_birth":"1990-01-01",
+#     "gender":"M",
+#     "address":"123 Main St"
+#   }'
+
+# Upload file
+# curl -X POST http://localhost:8000/api/medical-reports/ \
+#   -H "Authorization: Bearer YOUR_TOKEN" \
+#   -F "patient=1" \
+#   -F "report_type=lab_test" \
+#   -F "title=Blood Test" \
+#   -F "file=@/path/to/file.pdf"
