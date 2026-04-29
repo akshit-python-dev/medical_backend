@@ -89,7 +89,7 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
             'medications', 'vital_signs', 'doctor_name', 'follow_up_date',
             'prescriptions', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'doctor_name']
+        read_only_fields = ['created_at', 'updated_at', 'doctor_name','doctor']
 
 
 class MedicalReportSerializer(serializers.ModelSerializer):
@@ -136,7 +136,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'appointment_date', 'status', 'reason', 'notes',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'doctor_name']
+        read_only_fields = ['created_at', 'updated_at', 'doctor_name', 'doctor']
     
     def get_patient_name(self, obj):
         return f"{obj.patient.first_name} {obj.patient.last_name}"
@@ -183,6 +183,13 @@ class PatientDetailSerializer(PatientSerializer):
     medical_reports = MedicalReportSerializer(many=True, read_only=True)
     bills = BillingSerializer(many=True, read_only=True)
 
+    class Meta(PatientSerializer.Meta):
+        fields = PatientSerializer.Meta.fields + [
+            'appointments',
+            'medical_records',
+            'medical_reports',
+            'bills',
+        ]
 
 class AppointmentDetailSerializer(AppointmentSerializer):
     patient = PatientSerializer(read_only=True)
