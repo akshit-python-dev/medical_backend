@@ -67,6 +67,7 @@ class Command(BaseCommand):
         # Create sample patients for each doctor
         first_names = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Emma', 'Robert', 'Lisa']
         last_names = ['Doe', 'Smith', 'Johnson', 'Brown', 'Davis', 'Garcia', 'Martinez', 'Wilson']
+        father_names = ['David', 'Tim','mathew']
         genders = ['M', 'F']
         
         patients = []
@@ -79,13 +80,14 @@ class Command(BaseCommand):
                 first_name = random.choice(first_names)
                 last_name = random.choice(last_names)
                 email = f'{first_name.lower()}.{last_name.lower()}_{patient_count}@example.com'
-                
+                father_name = random.choice(father_names)
                 patient, created = Patient.objects.get_or_create(
                     email=email,
                     defaults={
                         'doctor': doctor,
                         'first_name': first_name,
                         'last_name': last_name,
+                        'father_name': father_name,
                         'phone': f'555-{random.randint(1000, 9999)}',
                         'date_of_birth': f'{random.randint(1950, 2000)}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}',
                         'gender': random.choice(genders),

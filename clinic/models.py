@@ -40,6 +40,7 @@ class Patient(models.Model):
     phone = models.CharField(max_length=20)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    father_name = models.CharField(max_length=100, null=True, blank=True)
     address = models.TextField()
     medical_history = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
