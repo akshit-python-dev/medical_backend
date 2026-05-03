@@ -185,7 +185,7 @@ class Command(BaseCommand):
             num_prescriptions = random.randint(1, 3)
             for _ in range(num_prescriptions):
                 prescription, created = Prescription.objects.get_or_create(
-                    medical_record=record,
+                    patient= random.choice(patients),
                     medication_name=random.choice([
                         'Lisinopril', 'Metformin', 'Atorvastatin', 'Omeprazole',
                         'Sertraline', 'Amlodipine', 'Aspirin', 'Ibuprofen'

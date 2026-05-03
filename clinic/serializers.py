@@ -67,14 +67,19 @@ class PatientSerializer(serializers.ModelSerializer):
 
 
 class PrescriptionSerializer(serializers.ModelSerializer):
-    patient = PatientSerializer(source='medical_record.patient', read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = Prescription
         fields = [
-            'id', 'medication_name', 'dosage', 'frequency', 'patient',
-            'duration', 'instructions', 'created_at'
+            'id', 'patient', 'patient_name', 'medication_name',
+            'dosage', 'frequency', 'duration', 'instructions',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at']
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def get_patient_name(self, obj):
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
     
 
 
@@ -182,6 +187,7 @@ class PatientDetailSerializer(PatientSerializer):
     medical_records = MedicalRecordSerializer(many=True, read_only=True)
     medical_reports = MedicalReportSerializer(many=True, read_only=True)
     bills = BillingSerializer(many=True, read_only=True)
+    prescriptions = PrescriptionSerializer(many=True, read_only=True)
 
     class Meta(PatientSerializer.Meta):
         fields = PatientSerializer.Meta.fields + [
@@ -189,6 +195,7 @@ class PatientDetailSerializer(PatientSerializer):
             'medical_records',
             'medical_reports',
             'bills',
+            'prescriptions',
         ]
 
 class AppointmentDetailSerializer(AppointmentSerializer):

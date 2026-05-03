@@ -293,47 +293,96 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     - Create: POST /api/prescriptions/
     - Detail: GET /api/prescriptions/{id}/
     - Update: PATCH /api/prescriptions/{id}/
+    - Bulk Create: POST /api/prescriptions/bulk_create/
     """
     serializer_class = PrescriptionSerializer
     permission_classes = [IsDoctorUser]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['medication_name', 'medical_record__patient__first_name']
+    search_fields = ['medication_name', 'patient__first_name', 'patient__last_name']
     ordering_fields = ['created_at']
     ordering = ['-created_at']
     
     def get_queryset(self):
-        """Filter prescriptions by current doctor."""
-        return Prescription.objects.filter(medical_record__doctor=self.request.user)
+        """Filter prescriptions by current doctor's patients."""
+        queryset = Prescription.objects.filter(patient__doctor=self.request.user)
+        
+        # Filter by patient
+        patient_id = self.request.query_params.get('patient')
+        if patient_id:
+            queryset = queryset.filter(patient_id=patient_id)
+        
+        # Filter by date range
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        if date_from:
+            queryset = queryset.filter(created_at__date__gte=parse_date(date_from))
+        if date_to:
+            queryset = queryset.filter(created_at__date__lte=parse_date(date_to))
+        
+        return queryset
 
     def perform_create(self, serializer):
+        """Save prescription with patient relationship."""
+        serializer.save()
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Handle PATCH requests for prescription updates."""
+        prescription = self.get_object()
+        serializer = self.get_serializer(prescription, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def bulk_create(self, request):
         """
-        Resolve prescription -> medical record from patient.
-        Frontend sends patient id; model requires medical_record_id.
+        Create multiple prescriptions for a patient.
+        
+        Request body:
+        {
+            "patient": 1,
+            "prescriptions": [
+                {
+                    "medication_name": "Aspirin",
+                    "dosage": "500mg",
+                    "frequency": "twice_daily",
+                    "duration": "7 days",
+                    "instructions": "Take with food"
+                }
+            ]
+        }
         """
-        patient_id = self.request.data.get('patient')
+        patient_id = request.data.get('patient')
+        prescriptions_data = request.data.get('prescriptions', [])
+        
         if not patient_id:
-            raise ValidationError({'patient': 'This field is required.'})
-
+            return Response(
+                {'error': 'patient field is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
-            patient_id = int(patient_id)
-        except (TypeError, ValueError):
-            raise ValidationError({'patient': 'A valid patient id is required.'})
-
-        medical_record = MedicalRecord.objects.filter(
-            doctor=self.request.user,
-            patient_id=patient_id
-        ).order_by('-created_at').first()
-
-        if not medical_record:
-            raise ValidationError({
-                'medical_record': (
-                    'No medical record found for this patient. '
-                    'Create a medical record before prescribing.'
-                )
-            })
-
-        serializer.save(medical_record=medical_record)
-
+            patient = Patient.objects.get(id=patient_id, doctor=request.user)
+        except Patient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found or not authorized'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        created_prescriptions = []
+        for presc_data in prescriptions_data:
+            presc = Prescription.objects.create(
+                patient=patient,
+                **presc_data
+            )
+            created_prescriptions.append(presc)
+        
+        serializer = PrescriptionSerializer(created_prescriptions, many=True)
+        return Response(
+            {'created': len(created_prescriptions), 'prescriptions': serializer.data},
+            status=status.HTTP_201_CREATED
+        )
 
 class BillingViewSet(viewsets.ModelViewSet):
     """

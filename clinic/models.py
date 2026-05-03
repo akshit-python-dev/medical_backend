@@ -139,13 +139,16 @@ class MedicalReport(models.Model):
 
 class Prescription(models.Model):
     """Prescription model."""
-    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='prescriptions')
+    
+    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='prescriptions', null=True, blank=True)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='prescriptions')
     medication_name = models.CharField(max_length=200)
     dosage = models.CharField(max_length=100)
-    frequency = models.CharField(max_length=100)  # e.g., "Twice daily"
-    duration = models.CharField(max_length=100)  # e.g., "7 days"
+    frequency = models.CharField(max_length=100)
+    duration = models.CharField(max_length=100, blank=True)
     instructions = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-created_at']
