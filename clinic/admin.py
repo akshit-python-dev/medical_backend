@@ -115,15 +115,14 @@ class MedicalReportAdmin(admin.ModelAdmin):
 @admin.register(Prescription)
 class PrescriptionAdmin(admin.ModelAdmin):
     """Admin interface for managing prescriptions."""
-    list_display = ('medication_name', 'dosage', 'get_patient_name', 'frequency', 'created_at')
-    list_filter = ('frequency', 'created_at')
+    list_display = ('medication_name', 'get_patient_name', 'created_at')
+    list_filter = ('created_at',)
     search_fields = ('medication_name', 'medical_record__patient__first_name', 'medical_record__patient__last_name')
     readonly_fields = ('created_at',)
     
     fieldsets = (
         ('Medical Record', {'fields': ('medical_record',)}),
-        ('Medication', {'fields': ('medication_name', 'dosage', 'frequency', 'duration')}),
-        ('Instructions', {'fields': ('instructions',)}),
+        ('Medication', {'fields': ('medication_name',)}),
         ('Timestamps', {'fields': ('created_at',), 'classes': ('collapse',)}),
     )
     

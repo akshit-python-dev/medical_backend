@@ -2,11 +2,13 @@
 Serializers for the clinic API.
 """
 
+from decimal import Decimal
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
     Patient, Appointment, MedicalRecord, MedicalReport,
-    Prescription, Billing, ClinicStats
+    Prescription, Billing, BillingItem, ClinicStats
 )
 
 User = get_user_model()
@@ -73,7 +75,6 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         model = Prescription
         fields = [
             'id', 'patient', 'patient_name', 'medication_name',
-            'dosage', 'frequency', 'duration', 'instructions',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -146,6 +147,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj):
         return f"{obj.patient.first_name} {obj.patient.last_name}"
 
+class BillingItemSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = BillingItem
+            fields = ['id', 'medicine_name', 'amount']
+            read_only_fields = ['id']
 
 class BillingSerializer(serializers.ModelSerializer):
     patient = PatientSerializer(read_only=True)
@@ -156,18 +162,100 @@ class BillingSerializer(serializers.ModelSerializer):
         required=False
     )
     patient_name = serializers.SerializerMethodField()
+    items = BillingItemSerializer(many=True, required=False)
     
     class Meta:
         model = Billing
         fields = [
-            'id', 'patient', 'patient_id', 'patient_name', 'appointment',
-            'amount', 'status', 'description', 'invoice_date',
+            'id', 'patient', 'patient_id', 'patient_name',
+            'amount', 'status', 'description', 'items', 'invoice_date',
             'due_date', 'payment_date', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at', 'invoice_date']
+        extra_kwargs = {
+            'amount': {'required': False},
+            'description': {'required': False, 'allow_blank': True},
+        }
     
     def get_patient_name(self, obj):
         return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        items = attrs.get('items')
+
+        if items is not None:
+            valid_items = [
+                item for item in items
+                if item.get('medicine_name') and item.get('amount') is not None
+            ]
+            if not valid_items:
+                raise serializers.ValidationError({
+                    'items': 'Add at least one medicine with a price.'
+                })
+
+        elif self.instance is None:
+            if attrs.get('amount') is None or not attrs.get('description'):
+                raise serializers.ValidationError(
+                    'Provide either invoice items or both amount and description.'
+                )
+
+        return attrs
+
+    def _build_description_from_items(self, items):
+        medicine_names = [item['medicine_name'].strip() for item in items if item.get('medicine_name')]
+        return ', '.join(medicine_names)
+
+    def _sum_item_amounts(self, items):
+        return sum(Decimal(str(item['amount'])) for item in items)
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', None)
+
+        if items_data:
+            validated_data['amount'] = self._sum_item_amounts(items_data)
+            validated_data['description'] = self._build_description_from_items(items_data)
+
+        billing = Billing.objects.create(**validated_data)
+
+        if items_data:
+            BillingItem.objects.bulk_create(
+                [
+                    BillingItem(
+                        billing=billing,
+                        medicine_name=item['medicine_name'].strip(),
+                        amount=item['amount'],
+                    )
+                    for item in items_data
+                ]
+            )
+
+        return billing
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if items_data is not None:
+            instance.items.all().delete()
+            BillingItem.objects.bulk_create(
+                [
+                    BillingItem(
+                        billing=instance,
+                        medicine_name=item['medicine_name'].strip(),
+                        amount=item['amount'],
+                    )
+                    for item in items_data
+                    if item.get('medicine_name')
+                ]
+            )
+            instance.amount = self._sum_item_amounts(items_data)
+            instance.description = self._build_description_from_items(items_data)
+
+        instance.save()
+        return instance
 
 
 class ClinicStatsSerializer(serializers.ModelSerializer):

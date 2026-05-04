@@ -13,6 +13,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.db.models import Sum
 from datetime import timedelta
 
@@ -324,6 +325,16 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Save prescription with patient relationship."""
+        patient = serializer.validated_data['patient']
+        if patient.doctor != self.request.user:
+            raise ValidationError({'patient': 'Patient not found or not authorized'})
+        serializer.save()
+
+    def perform_update(self, serializer):
+        """Ensure prescriptions stay scoped to the current doctor's patients."""
+        patient = serializer.validated_data.get('patient', serializer.instance.patient)
+        if patient.doctor != self.request.user:
+            raise ValidationError({'patient': 'Patient not found or not authorized'})
         serializer.save()
     
     def partial_update(self, request, *args, **kwargs):
@@ -404,6 +415,20 @@ class BillingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter billing by current doctor's patients."""
         return Billing.objects.filter(patient__doctor=self.request.user)
+
+    def perform_create(self, serializer):
+        """Ensure invoices can only be created for the current doctor's patients."""
+        patient = serializer.validated_data['patient']
+        if patient.doctor != self.request.user:
+            raise ValidationError({'patient_id': 'Patient not found or not authorized'})
+        serializer.save()
+
+    def perform_update(self, serializer):
+        """Ensure invoices remain scoped to the current doctor's patients."""
+        patient = serializer.validated_data.get('patient', serializer.instance.patient)
+        if patient.doctor != self.request.user:
+            raise ValidationError({'patient_id': 'Patient not found or not authorized'})
+        serializer.save()
     
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -416,7 +441,10 @@ class BillingViewSet(viewsets.ModelViewSet):
                 Sum('amount'))['amount__sum'] or 0,
             'total_paid': queryset.filter(status='paid').aggregate(
                 Sum('amount'))['amount__sum'] or 0,
+            'total_revenue': queryset.aggregate(
+                Sum('amount'))['amount__sum'] or 0,
             'pending_count': queryset.filter(status='pending').count(),
+            'overdue_count': queryset.filter(status='overdue').count(),
         }
         return Response(summary)
     

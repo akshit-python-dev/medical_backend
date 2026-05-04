@@ -142,11 +142,7 @@ class Prescription(models.Model):
     
     medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, related_name='prescriptions', null=True, blank=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='prescriptions')
-    medication_name = models.CharField(max_length=200)
-    dosage = models.CharField(max_length=100)
-    frequency = models.CharField(max_length=100)
-    duration = models.CharField(max_length=100, blank=True)
-    instructions = models.TextField(blank=True)
+    medication_name = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -154,7 +150,7 @@ class Prescription(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"{self.medication_name} - {self.dosage}"
+        return f"Prescription for {self.patient.first_name}: {self.medication_name[:40]}"
 
 
 class Billing(models.Model):
@@ -167,7 +163,6 @@ class Billing(models.Model):
     ]
     
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='bills')
-    appointment = models.OneToOneField(Appointment, on_delete=models.SET_NULL, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     description = models.TextField()
@@ -182,6 +177,22 @@ class Billing(models.Model):
     
     def __str__(self):
         return f"Invoice #{self.id} - {self.patient.first_name}"
+
+
+class BillingItem(models.Model):
+    """Individual medicine line items for an invoice."""
+
+    billing = models.ForeignKey(Billing, on_delete=models.CASCADE, related_name='items')
+    medicine_name = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.medicine_name} - {self.amount}"
 
 
 class ClinicStats(models.Model):

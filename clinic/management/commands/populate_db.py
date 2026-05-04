@@ -5,11 +5,13 @@ Creates doctors and their associated patients, appointments, and medical records
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from clinic.models import (
     Patient, Appointment, MedicalRecord, MedicalReport,
-    Prescription, Billing, ClinicStats
+    Prescription, Billing, BillingItem, ClinicStats
 )
 from datetime import datetime, timedelta
+from decimal import Decimal
 import random
 
 User = get_user_model()
@@ -65,9 +67,9 @@ class Command(BaseCommand):
                 doctors.append(doctor)
         
         # Create sample patients for each doctor
-        first_names = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Emma', 'Robert', 'Lisa']
-        last_names = ['Doe', 'Smith', 'Johnson', 'Brown', 'Davis', 'Garcia', 'Martinez', 'Wilson']
-        father_names = ['David', 'Tim','mathew']
+        first_names = ['mani', 'sibil', 'mohan', 'vihaan', 'saurav', 'rohit', 'mohit', 'sameer']
+        last_names = ['singh', 'kumar', 'gupta', 'garg', 'jha', 'sharma']
+        father_names = ['suresh', 'harish','anil']
         genders = ['M', 'F']
         
         patients = []
@@ -182,53 +184,90 @@ class Command(BaseCommand):
         # Create sample prescriptions for medical records
         prescription_count = 0
         for record in MedicalRecord.objects.all()[:10]:
-            num_prescriptions = random.randint(1, 3)
-            for _ in range(num_prescriptions):
-                prescription, created = Prescription.objects.get_or_create(
-                    patient= random.choice(patients),
-                    medication_name=random.choice([
-                        'Lisinopril', 'Metformin', 'Atorvastatin', 'Omeprazole',
-                        'Sertraline', 'Amlodipine', 'Aspirin', 'Ibuprofen'
-                    ]),
-                    defaults={
-                        'dosage': random.choice(['500mg', '10mg', '20mg', '500mg', '100mg']),
-                        'frequency': random.choice(['Once daily', 'Twice daily', 'Three times daily', 'As needed']),
-                        'duration': random.choice(['7 days', '14 days', '30 days', '90 days']),
-                        'instructions': 'Take with food, do not skip doses'
-                    }
+            medicine_lines = [
+                f"{random.choice(['Lisinopril', 'Metformin', 'Atorvastatin', 'Omeprazole'])} {random.choice(['5mg', '10mg', '20mg'])}",
+                f"{random.choice(['Sertraline', 'Amlodipine', 'Aspirin', 'Ibuprofen'])} {random.choice(['75mg', '100mg', '250mg', '500mg'])}",
+            ]
+            if random.choice([True, False]):
+                medicine_lines.append(
+                    f"{random.choice(['Vitamin D3', 'Pantoprazole', 'Cetirizine'])} {random.choice(['10mg', '40mg', '600 IU'])}"
                 )
-                if created:
-                    prescription_count += 1
+
+            prescription, created = Prescription.objects.get_or_create(
+                medical_record=record,
+                patient=record.patient,
+                medication_name='\n'.join(medicine_lines),
+            )
+            if created:
+                prescription_count += 1
         
         self.stdout.write(self.style.SUCCESS(f'✓ Created {prescription_count} prescriptions'))
         
         # Create sample billing records
         billing_count = 0
+        billing_item_count = 0
+        medicine_catalog = [
+            'Paracetamol 500mg',
+            'Amoxicillin 250mg',
+            'Ibuprofen 400mg',
+            'Vitamin B Complex',
+            'Pantoprazole 40mg',
+            'Cough Syrup 100ml',
+        ]
         for patient in patients[:len(patients)//2]:
             num_bills = random.randint(1, 3)
             for _ in range(num_bills):
+                item_count = random.randint(1, 3)
+                items = []
+                for _ in range(item_count):
+                    amount = Decimal(str(round(random.uniform(50, 500), 2)))
+                    items.append({
+                        'medicine_name': random.choice(medicine_catalog),
+                        'amount': amount,
+                    })
+
+                total_amount = sum(item['amount'] for item in items)
+                description = ', '.join(item['medicine_name'] for item in items)
+                status = random.choice(['pending', 'paid', 'overdue'])
+                payment_date = datetime.now().date() if status == 'paid' else None
+
                 billing, created = Billing.objects.get_or_create(
                     patient=patient,
-                    invoice_date=datetime.now().date() - timedelta(days=random.randint(1, 60)),
                     defaults={
-                        'amount': round(random.uniform(50, 500), 2),
-                        'status': random.choice(['pending', 'paid', 'overdue']),
-                        'description': random.choice(['Consultation fee', 'Lab tests', 'Procedure', 'Follow-up visit']),
+                        'amount': total_amount,
+                        'status': status,
+                        'description': description,
                         'due_date': datetime.now().date() + timedelta(days=random.randint(7, 30)),
-                        'payment_date': datetime.now().date() if random.choice([True, False, False]) else None
+                        'payment_date': payment_date,
                     }
                 )
                 if created:
                     billing_count += 1
+                    BillingItem.objects.bulk_create(
+                        [
+                            BillingItem(
+                                billing=billing,
+                                medicine_name=item['medicine_name'],
+                                amount=item['amount'],
+                            )
+                            for item in items
+                        ]
+                    )
+                    billing_item_count += len(items)
         
         self.stdout.write(self.style.SUCCESS(f'✓ Created {billing_count} billing records'))
+        self.stdout.write(self.style.SUCCESS(f'✓ Created {billing_item_count} billing items'))
         
         # Create clinic statistics
         total_patients = Patient.objects.count()
         total_appointments = Appointment.objects.count()
         completed_appointments = Appointment.objects.filter(status='completed').count()
-        total_revenue = sum(b.amount for b in Billing.objects.filter(status='paid'))
-        pending_bills = sum(b.amount for b in Billing.objects.filter(status__in=['pending', 'overdue']))
+        total_revenue = Billing.objects.filter(status='paid').aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0')
+        pending_bills = Billing.objects.filter(status__in=['pending', 'overdue']).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0')
         
         stats, created = ClinicStats.objects.get_or_create(
             date=datetime.now().date(),
