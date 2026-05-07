@@ -34,6 +34,7 @@ class Patient(models.Model):
     ]
     
     doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patients')
+    patient_id = models.CharField(max_length=50, unique=True, blank=True, editable=False)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField()
@@ -45,6 +46,27 @@ class Patient(models.Model):
     medical_history = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.patient_id:
+            # Generate custom patient ID: PAT-<doctor-initial>-<number>
+            doctor_initials = ''.join([c[0] for c in self.doctor.get_full_name().split() if c]).upper()
+            if not doctor_initials:
+                doctor_initials = self.doctor.username[:3].upper()
+            
+            # Get the next patient number for this doctor
+            last_patient = Patient.objects.filter(doctor=self.doctor).order_by('-id').first()
+            if last_patient and last_patient.patient_id:
+                try:
+                    last_num = int(last_patient.patient_id.split('-')[-1])
+                    next_num = last_num + 1
+                except (ValueError, IndexError):
+                    next_num = 1
+            else:
+                next_num = 1
+            
+            self.patient_id = f"PAT-{doctor_initials}-{next_num:04d}"
+        super().save(*args, **kwargs)
     
     class Meta:
         ordering = ['-created_at']

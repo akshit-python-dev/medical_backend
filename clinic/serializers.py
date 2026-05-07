@@ -54,11 +54,11 @@ class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            'id', 'first_name', 'last_name', 'email', 'phone',
+            'id', 'patient_id', 'first_name', 'last_name', 'email', 'phone',
             'date_of_birth', 'father_name', 'age', 'gender', 'address',
             'medical_history', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'patient_id']
     
     def get_age(self, obj):
         from datetime import date
