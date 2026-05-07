@@ -34,7 +34,7 @@ class Patient(models.Model):
     ]
     
     doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patients')
-    patient_id = models.CharField(max_length=50, unique=True, blank=True, editable=False)
+    patient_id = models.CharField(max_length=50, blank=True, editable=False)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField()
